@@ -156,7 +156,7 @@ const AppContent = () => {
           path="/hrms" 
           element={
             <ProtectedRoute>
-              <HRMS />
+              <ComingSoon />
             </ProtectedRoute>
           } 
         />

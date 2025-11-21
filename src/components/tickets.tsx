@@ -328,17 +328,9 @@ const Tickets: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen ml-[30px]">
       {/* Loading Overlay */}
       {isInitialLoading && <LoadingOverlay />}
-
-      <div className="w-full p-6">
-        {/* Date Range Picker */}
-        <DateRangePicker 
-          dateRange={dateRange}
-          setDateRange={setDateRange}
-          loading={loading}
-        />
 
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-lg shadow-blue-50 mb-6 border border-gray-100 overflow-x-auto">
@@ -375,7 +367,7 @@ const Tickets: React.FC = () => {
           {activeTab === 'my-tickets' && renderMyTicketsTab()}
           {activeTab === 'team-tickets' && renderTeamTicketsTab()}
         </div>
-      </div>
+
     </div>
   );
 };
