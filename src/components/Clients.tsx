@@ -676,27 +676,30 @@ useEffect(() => {
     <div className="min-h-screen ml-[30px]">
   
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3">
-              {/* Path Breadcrumb */}
-               <PathBreadcrumb />
-              {getConnectionStatusIcon()}
-            </div>
-            {lastUpdated && (
-              <div className="flex items-center gap-4 mt-1 text-sm">
-                {(newRecordsCount > 0 || modifiedRecordsCount > 0) && (
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                    {newRecordsCount > 0 && `${newRecordsCount} new`}
-                    {newRecordsCount > 0 && modifiedRecordsCount > 0 && ', '}
-                    {modifiedRecordsCount > 0 && `${modifiedRecordsCount} updated`}
-                  </span>
-                )}
-              </div>
+    {/* Desktop Header - Hidden on mobile */}
+    <div className="hidden lg:flex flex-row items-center justify-between gap-4 mb-8">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-lg sm:text-2xl font-bold text-foreground">
+            Client Stage
+          </h1>
+        </div>
+
+        {lastUpdated && (
+          <div className="flex items-center gap-4 text-xs sm:text-sm">
+            {(newRecordsCount > 0 || modifiedRecordsCount > 0) && (
+              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                {newRecordsCount > 0 && `${newRecordsCount} new`}
+                {newRecordsCount > 0 && modifiedRecordsCount > 0 && ', '}
+                {modifiedRecordsCount > 0 && `${modifiedRecordsCount} updated`}
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            {/*<div className="flex items-center gap-2">
+        )}
+      </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            {/* Auto Refresh Toggle */}
+            <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="autoRefresh"
@@ -706,6 +709,7 @@ useEffect(() => {
               />
               <label htmlFor="autoRefresh" className="text-sm text-gray-700">Auto Refresh</label>
             </div>
+            {/* Refresh Interval Select */}
             <select
               value={refreshInterval}
               onChange={(e) => setRefreshInterval(Number(e.target.value))}
@@ -715,12 +719,10 @@ useEffect(() => {
               <option value={300}>5 min</option>
               <option value={600}>10 min</option>
               <option value={900}>15 min</option>
-            </select>*/}
+            </select>
+            
+            {/* Use the new RefreshButton component */}
             <RefreshButton />
-            <button className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors">
-              <Plus size={20} />
-              Add New Lead
-            </button>
           </div>
         </div>
 
@@ -730,10 +732,6 @@ useEffect(() => {
             {error}
           </div>
         )}
-
-        <div className="flex flex-col gap-3 mb-8">
-           <h1 className="text-3xl font-bold text-foreground">Lead Management</h1>
-        </div>
 
         {/* Summary Cards */}
         <SummaryCardsGrid columns={6} className="mb-6">

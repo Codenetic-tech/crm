@@ -116,7 +116,7 @@ const AppContent = () => {
           path="/incentive" 
           element={
             <ProtectedRoute>
-              <Incentive />
+              <ComingSoon />
             </ProtectedRoute>
           } 
         />
