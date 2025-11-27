@@ -91,6 +91,24 @@ export interface Lead {
   other_brokers: string;
 }
 
+// LightLead interface for optimized caching
+export interface LightLead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: Lead['status'];
+  source: string;
+  createdAt: string;
+  assignedTo: string;
+  lastActivity: string;
+  campaign?: string;
+  city?: string;
+  ucc?: string;
+  branchCode?: string;
+  _assign: string;
+}
+
 // Import cache functions
 import { 
   getCachedLeads, 
@@ -144,6 +162,24 @@ const getTimeAgo = (dateString: string): string => {
   }
 };
 
+// Function to convert full Lead to LightLead
+export const toLightLead = (lead: Lead): LightLead => ({
+  id: lead.id,
+  name: lead.name,
+  email: lead.email,
+  phone: lead.phone,
+  status: lead.status,
+  source: lead.source,
+  createdAt: lead.createdAt,
+  assignedTo: lead.assignedTo,
+  lastActivity: lead.lastActivity,
+  campaign: lead.campaign,
+  city: lead.city,
+  ucc: lead.ucc,
+  branchCode: lead.branchCode,
+  _assign: lead._assign
+});
+
 // Function to map API lead to our Lead interface
 export const mapApiLeadToLead = (apiLead: APILead): Lead => {
   return {
@@ -181,17 +217,20 @@ export const mapApiLeadToLead = (apiLead: APILead): Lead => {
     _assign: apiLead._assign,
     language: apiLead.language,
     other_brokers: apiLead.other_brokers
-
   };
 };
 
-// Change the fetchLeads function to accept team parameter
+// Updated fetchLeads function with better error handling
 export const fetchLeads = async (employeeId: string, email: string, team: string): Promise<Lead[]> => {
-  // Check cache first
-  const cachedLeads = getCachedLeads(employeeId, email);
-  if (cachedLeads) {
-    console.log('Returning cached leads');
-    return cachedLeads;
+  try {
+    // Try to get from cache first
+    const cachedLeads = getCachedLeads(employeeId, email);
+    if (cachedLeads) {
+      console.log('Returning cached leads');
+      return cachedLeads;
+    }
+  } catch (cacheError) {
+    console.warn('Cache read failed, fetching from API:', cacheError);
   }
 
   try {
@@ -205,7 +244,7 @@ export const fetchLeads = async (employeeId: string, email: string, team: string
         source: 'Lead',
         employeeId: employeeId,
         email: email,
-        team: team // Use the team parameter here instead of user.team
+        team: team
       })
     });
 
@@ -218,8 +257,21 @@ export const fetchLeads = async (employeeId: string, email: string, team: string
     // Map API leads to our Lead interface
     const mappedLeads: Lead[] = apiLeads.map(mapApiLeadToLead);
     
-    // Save to cache
-    saveLeadsToCache(mappedLeads, employeeId, email);
+    // Try to save to cache, but don't fail if it doesn't work
+    try {
+      saveLeadsToCache(mappedLeads, employeeId, email);
+    } catch (saveError) {
+      console.warn('Failed to save leads to cache:', saveError);
+      // Clear cache and try one more time
+      if (saveError instanceof DOMException && saveError.name === 'QuotaExceededError') {
+        clearAllCache();
+        try {
+          saveLeadsToCache(mappedLeads, employeeId, email);
+        } catch (retryError) {
+          console.warn('Failed to save leads to cache after clearing:', retryError);
+        }
+      }
+    }
     
     return mappedLeads;
   } catch (error) {
@@ -244,7 +296,11 @@ export const getLeadById = async (leadId: string, employeeId: string, email: str
     
     // Save to cache if found
     if (lead) {
-      saveLeadDetailsToCache(leadId, lead);
+      try {
+        saveLeadDetailsToCache(leadId, lead);
+      } catch (saveError) {
+        console.warn('Failed to save lead details to cache:', saveError);
+      }
     }
     
     return lead;
@@ -280,7 +336,7 @@ export const updateLeadStatus = (leadId: string, newStatus: Lead['status']): voi
     // Update lead details cache
     const detailsCache = localStorage.getItem('crm_lead_details_cache');
     if (detailsCache) {
-      const cachedData = JSON.parse(detailsCache);
+      const cachedData: { [key: string]: { lead: Lead; timestamp: number } } = JSON.parse(detailsCache);
       if (cachedData[leadId]) {
         cachedData[leadId].lead.status = newStatus;
         cachedData[leadId].lead.lastActivity = 'Just now';

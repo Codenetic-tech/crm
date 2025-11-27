@@ -19,6 +19,55 @@ const LEADS_CACHE_KEY = 'crm_leads_cache';
 const LEAD_DETAILS_CACHE_KEY = 'crm_lead_details_cache';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
+// Cache size management
+const MAX_CACHE_SIZE = 4 * 1024 * 1024; // 4MB
+const MAX_LEADS_IN_DETAILS_CACHE = 100; // Keep only recent 100 leads in details cache
+
+// Add function to calculate cache size
+const getCacheSize = (): number => {
+  let total = 0;
+  for (const key in localStorage) {
+    if (localStorage.hasOwnProperty(key)) {
+      total += localStorage[key].length * 2; // *2 because UTF-16
+    }
+  }
+  return total;
+};
+
+// Add function to clean up old cache entries
+const cleanupOldCacheEntries = (): void => {
+  try {
+    // Clean up lead details cache - keep only recent ones
+    const detailsCache = localStorage.getItem(LEAD_DETAILS_CACHE_KEY);
+    if (detailsCache) {
+      const cachedData: CachedLeadDetails = JSON.parse(detailsCache);
+      const entries = Object.entries(cachedData);
+      
+      if (entries.length > MAX_LEADS_IN_DETAILS_CACHE) {
+        // Sort by timestamp (newest first) and keep only the most recent ones
+        entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+        const newCache: CachedLeadDetails = {};
+        
+        entries.slice(0, MAX_LEADS_IN_DETAILS_CACHE).forEach(([key, value]) => {
+          newCache[key] = value;
+        });
+        
+        localStorage.setItem(LEAD_DETAILS_CACHE_KEY, JSON.stringify(newCache));
+        console.log(`Cleaned up lead details cache: ${entries.length} -> ${Object.keys(newCache).length}`);
+      }
+    }
+
+    // Check total cache size and clear if needed
+    const totalSize = getCacheSize();
+    if (totalSize > MAX_CACHE_SIZE) {
+      console.warn(`Cache size (${totalSize} bytes) exceeds limit, clearing cache`);
+      clearAllCache();
+    }
+  } catch (error) {
+    console.error('Error cleaning up cache:', error);
+  }
+};
+
 export const getCachedLeads = (employeeId: string, email: string): Lead[] | null => {
   try {
     const cached = localStorage.getItem(LEADS_CACHE_KEY);
@@ -42,27 +91,29 @@ export const getCachedLeads = (employeeId: string, email: string): Lead[] | null
 
 export const saveLeadsToCache = (leads: Lead[], employeeId: string, email: string): void => {
   try {
+    // Clean up before saving new data
+    cleanupOldCacheEntries();
+    
     const cacheData: CachedLeadData = {
       leads,
       timestamp: Date.now(),
       employeeId,
       email
     };
+    
+    // Only save essential data for the leads list (without duplicating in details cache)
     localStorage.setItem(LEADS_CACHE_KEY, JSON.stringify(cacheData));
 
-    // Also save each lead to the lead details cache
-    const cachedDetails = localStorage.getItem(LEAD_DETAILS_CACHE_KEY);
-    const detailsCache: CachedLeadDetails = cachedDetails ? JSON.parse(cachedDetails) : {};
-    const now = Date.now();
-    leads.forEach(lead => {
-      detailsCache[lead.id] = {
-        lead,
-        timestamp: now
-      };
-    });
-    localStorage.setItem(LEAD_DETAILS_CACHE_KEY, JSON.stringify(detailsCache));
+    // Don't save each lead to details cache here to avoid duplication
+    // The details cache should only be populated when individual lead details are fetched
+    
   } catch (error) {
     console.error('Error saving leads to cache:', error);
+    // If we get a quota error, clear some cache and retry
+    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+      console.warn('Storage quota exceeded, clearing cache');
+      clearAllCache();
+    }
   }
 };
 
@@ -189,7 +240,6 @@ export const saveCommentsToCache = (leadId: string, comments: Comment[]): void =
 export const clearCommentsCache = (): void => {
   localStorage.removeItem(COMMENTS_CACHE_KEY);
 };
-
 
 // Add Task interface (same as in LeadTasksTab.tsx)
 export interface Task {
@@ -325,4 +375,17 @@ export const updateCachedLeadDetails = (leadId: string, updatedLead: Lead) => {
     timestamp: new Date().getTime()
   };
   localStorage.setItem(key, JSON.stringify(cachedData));
+};
+
+// Add cache health check function
+export const initializeCacheHealthCheck = (): void => {
+  // Run cleanup every hour
+  setInterval(cleanupOldCacheEntries, 60 * 60 * 1000);
+  
+  // Also run cleanup when tab becomes visible
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      cleanupOldCacheEntries();
+    }
+  });
 };
