@@ -292,7 +292,7 @@ const LeadDetailsPage: React.FC = () => {
           <Button
             variant="outline"
             role="combobox"
-            className="w-full sm:w-[200px] justify-between"
+            className="w-full sm:w-[300px] justify-between"
           >
             {selectedCampaign
               ? campaignOptions.find((campaign) => campaign.value === selectedCampaign)?.label
@@ -300,7 +300,7 @@ const LeadDetailsPage: React.FC = () => {
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full sm:w-[200px] p-0">
+        <PopoverContent className="w-full sm:w-[300px] p-0">
           <Command>
             <CommandInput placeholder="Search campaign..." />
             <CommandList>
