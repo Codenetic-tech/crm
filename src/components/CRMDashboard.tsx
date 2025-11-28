@@ -13,7 +13,8 @@ import {
   ChevronsUpDown,
   ArrowUpDown,
   Menu,
-  X
+  X,
+  PhoneMissed
 } from 'lucide-react';
 
 // Import the actual useAuth hook and fetchLeads function
@@ -84,6 +85,7 @@ interface SummaryData {
   qualifiedLeads: number;
   totalValue: number;
   conversionRate: number;
+  notinterested: number;
 }
 
 const statusOptions = [
@@ -129,6 +131,12 @@ const campaignFilterFn: FilterFn<Lead> = (row, columnId, filterValue: string) =>
   return campaign.toLowerCase().includes(filterValue.toLowerCase());
 };
 
+const sourceFilterFn: FilterFn<Lead> = (row, columnId, filterValue: string) => {
+  if (!filterValue || filterValue === 'all') return true;
+  const campaign = row.original.source || '';
+  return campaign.toLowerCase().includes(filterValue.toLowerCase());
+};
+
 const assignedUserFilterFn: FilterFn<Lead> = (row, columnId, filterValue: string) => {
   if (!filterValue || filterValue === 'all') return true;
   const assignData = row.original._assign as string;
@@ -164,6 +172,7 @@ const CRMDashboard: React.FC = () => {
 
   // Filter states
   const [selectedCampaign, setSelectedCampaign] = useState<string>('');
+  const [selectedSource, setSelectedSource] = useState<string>('');
   const [selectedAssignedUser, setSelectedAssignedUser] = useState<string>('');
 
   // Rate limiting state
@@ -246,6 +255,21 @@ useEffect(() => {
     }));
     
     return [{ value: 'all', label: 'All Campaigns' }, ...campaigns];
+  }, [leads]);
+
+    // Get unique campaigns and assigned users
+  const sourceOptions = useMemo(() => {
+    const source = Array.from(new Set(
+      leads
+        .map(lead => lead.source)
+        .filter(Boolean)
+        .sort()
+    )).map(source => ({
+      value: source,
+      label: source
+    }));
+    
+    return [{ value: 'all', label: 'All Source' }, ...source];
   }, [leads]);
 
   const assignedUserOptions = useMemo(() => {
@@ -651,6 +675,14 @@ useEffect(() => {
     }
   }, [selectedCampaign, table]);
 
+    useEffect(() => {
+    if (selectedSource && selectedSource !== 'all') {
+      table.getColumn('source')?.setFilterValue(selectedSource);
+    } else {
+      table.getColumn('source')?.setFilterValue('');
+    }
+  }, [selectedSource, table]);
+
   useEffect(() => {
     if (selectedAssignedUser && selectedAssignedUser !== 'all') {
       table.getColumn('_assign')?.setFilterValue(selectedAssignedUser);
@@ -936,6 +968,53 @@ useEffect(() => {
     );
   };
 
+   // Source Filter Combobox
+  const SourceFilter = () => {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            className="w-full sm:w-[200px] justify-between"
+          >
+            {selectedSource
+              ? sourceOptions.find((source) => source.value === selectedSource)?.label
+              : "Select Source..."}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-full sm:w-[200px] p-0">
+          <Command>
+            <CommandInput placeholder="Search Source..." />
+            <CommandList>
+              <CommandEmpty>No source found.</CommandEmpty>
+              <CommandGroup>
+                {sourceOptions.map((source) => (
+                  <CommandItem
+                    key={source.value}
+                    value={source.value}
+                    onSelect={(currentValue) => {
+                      setSelectedSource(currentValue === selectedSource ? "" : currentValue);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedSource === source.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {source.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   // Assigned User Filter Combobox
   const AssignedUserFilter = () => {
     return (
@@ -1164,16 +1243,18 @@ const summaryData: SummaryData = useMemo(() => {
       followup: 0,
       qualifiedLeads: 0,
       totalValue: 0,
-      conversionRate: 0
+      conversionRate: 0,
+      notinterested: 0
     };
   }
 
   return {
-    totalLeads: filteredLeads.length,
+    totalLeads: leads.length,
     newLeads: filteredLeads.filter(lead => lead.status === 'new').length,
     contactedLeads: filteredLeads.filter(lead => lead.status === 'Contacted').length,
     followup: filteredLeads.filter(lead => lead.status === 'followup').length,
     qualifiedLeads: filteredLeads.filter(lead => lead.status === 'qualified').length,
+    notinterested: filteredLeads.filter(lead => lead.status === 'Not Interested').length,
     totalValue: filteredLeads.reduce((sum, lead) => sum + lead.value, 0),
     conversionRate: Math.round((filteredLeads.filter(lead => ['qualified', 'negotiation', 'won'].includes(lead.status)).length / Math.max(filteredLeads.length, 1)) * 100)
   };
@@ -1495,6 +1576,12 @@ const summaryData: SummaryData = useMemo(() => {
             <button onClick={() => setSelectedCampaign('')}>×</button>
           </span>
         )}
+        {selectedSource && selectedSource !== 'all' && (
+          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+            source: {sourceOptions.find(c => c.value === selectedSource)?.label}
+            <button onClick={() => setSelectedSource('')}>×</button>
+          </span>
+        )}
         {selectedAssignedUser && selectedAssignedUser !== 'all' && (
           <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs flex items-center gap-1">
             User: {assignedUserOptions.find(u => u.value === selectedAssignedUser)?.label}
@@ -1778,7 +1865,7 @@ const formatName = (name = "") => {
         )}
 
         {/* Summary Cards - Responsive Grid - Hidden on mobile (we show quick stats in header instead) */}
-        <div className="hidden lg:grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+        <div className="hidden lg:grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
           <SummaryCard
             title="Total Leads" value={summaryData.totalLeads} icon={Users} color="blue" shadowColor="blue" trend={{ value: 12.5, isPositive: true }} showTrend={true} className="h-full" />
           
@@ -1787,6 +1874,10 @@ const formatName = (name = "") => {
           
           <SummaryCard
             title="Contacted Leads" value={summaryData.contactedLeads} icon={BookText} color="orange" shadowColor="orange" trend={{ value: 22.1, isPositive: true }} 
+            showTrend={true} className="h-full" />
+
+          <SummaryCard
+            title="Not Interested" value={summaryData.notinterested} icon={PhoneMissed} color="red" shadowColor="red" trend={{ value: 8.1, isPositive: false }} 
             showTrend={true} className="h-full" />
 
           <SummaryCard
@@ -1827,6 +1918,9 @@ const formatName = (name = "") => {
 
               {/* Campaign Filter */}
               <CampaignFilter />
+
+              {/* Source Filter */}
+              <SourceFilter />
 
               {/* Assigned User Filter */}
               <AssignedUserFilter />
