@@ -14,7 +14,9 @@ import {
   ArrowUpDown,
   Menu,
   X,
-  PhoneMissed
+  PhoneMissed,
+  SquareUserRound,
+  UserCheck
 } from 'lucide-react';
 
 // Import the actual useAuth hook and fetchLeads function
@@ -86,6 +88,7 @@ interface SummaryData {
   totalValue: number;
   conversionRate: number;
   notinterested: number;
+  existingclient: number;
 }
 
 const statusOptions = [
@@ -278,7 +281,7 @@ useEffect(() => {
       try {
         const assignData = JSON.parse(lead._assign || "[]") as string[];
         assignData.forEach(user => {
-          if (user !== "gokul.krishna.687@gopocket.in") {
+          if (user !== "Administrator") {
             users.add(user);
           }
         });
@@ -313,7 +316,7 @@ useEffect(() => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  // Column definitions for TanStack Table
+  // Update the column definitions with consistent styling
   const columns: ColumnDef<Lead>[] = [
     {
       id: "select",
@@ -344,7 +347,7 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
             Lead Name
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -355,13 +358,13 @@ useEffect(() => {
         const lead = row.original;
         return (
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
               {lead.name.split(' ').map(n => n[0]).join('')}
             </div>
             <div>
-              <p className="font-medium text-gray-900 text-sm sm:text-base">{lead.name}</p>
+              <p className="font-medium text-gray-900 text-sm">{lead.name}</p>
               {lead.ucc && (
-                <p className="text-xs text-gray-400">UCC: {lead.ucc}</p>
+                <p className="text-xs text-gray-500 mt-0.5">UCC: {lead.ucc}</p>
               )}
             </div>
           </div>
@@ -375,14 +378,18 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
             Source
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         )
       },
-      cell: ({ row }) => <div className="hidden lg:block">{row.getValue("source")}</div>,
+      cell: ({ row }) => (
+        <div className="text-sm text-gray-900 hidden lg:block font-normal">
+          {row.getValue("source") || 'N/A'}
+        </div>
+      ),
     },
     {
       accessorKey: "campaign",
@@ -391,14 +398,18 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
             Campaign
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         )
       },
-      cell: ({ row }) => <div className="hidden lg:block">{row.getValue("campaign") || 'N/A'}</div>,
+      cell: ({ row }) => (
+        <div className="text-sm text-gray-900 hidden lg:block font-normal">
+          {row.getValue("campaign") || 'N/A'}
+        </div>
+      ),
       filterFn: campaignFilterFn,
     },
     {
@@ -408,7 +419,7 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
             Contact
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -418,7 +429,7 @@ useEffect(() => {
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <PhoneIcon size={14} className="text-gray-400" />
-          <span className="text-sm sm:text-base">{row.getValue("phone")}</span>
+          <span className="text-sm text-gray-900 font-normal">{row.getValue("phone")}</span>
         </div>
       ),
     },
@@ -429,7 +440,7 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
             City
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -440,10 +451,10 @@ useEffect(() => {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Building2 size={16} className="text-gray-400" />
-            <span className="text-sm sm:text-base">{row.getValue("city") || 'N/A'}</span>
+            <span className="text-sm text-gray-900 font-normal">{row.getValue("city") || 'N/A'}</span>
           </div>
           {row.original.branchCode && (
-            <div className="text-xs text-gray-400 hidden sm:block">
+            <div className="text-xs text-gray-500 hidden sm:block">
               Branch: {row.original.branchCode}
             </div>
           )}
@@ -457,9 +468,9 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
-            other_brokers
+            Other Brokers
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         )
@@ -468,7 +479,7 @@ useEffect(() => {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Building2 size={16} className="text-gray-400" />
-            <span className="text-sm sm:text-base">{row.getValue("other_brokers") || 'N/A'}</span>
+            <span className="text-sm text-gray-900 font-normal">{row.getValue("other_brokers") || 'N/A'}</span>
           </div>
         </div>
       ),
@@ -480,7 +491,7 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
             Status
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -490,7 +501,7 @@ useEffect(() => {
       cell: ({ row }) => {
         const status = row.getValue("status") as Lead['status'];
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
             {status.charAt(0).toUpperCase() + status.slice(1)}
           </span>
         )
@@ -504,14 +515,18 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
             Last Modified
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         )
       },
-      cell: ({ row }) => <div className="font-medium text-sm sm:text-base hidden lg:block">{row.getValue("lastActivity")}</div>,
+      cell: ({ row }) => (
+        <div className="text-sm text-gray-900 font-normal hidden lg:block">
+          {row.getValue("lastActivity")}
+        </div>
+      ),
     },
     {
       accessorKey: "_assign",
@@ -520,7 +535,7 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
             Assigned To
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -532,13 +547,13 @@ useEffect(() => {
         return (
           <div className="flex -space-x-2">
             {JSON.parse(assignData || "[]")
-              .filter((user: string) => user !== "gokul.krishna.687@gopocket.in")
+              .filter((user: string) => user !== "Administrator")
               .map((user: string, index: number) => {
                 const firstLetter = user.charAt(0).toUpperCase();
                 return (
                   <div key={index} className="relative group">
                     <div
-                      className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-blue-500 text-white text-xs sm:text-sm font-semibold border-2 border-white cursor-pointer"
+                      className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-blue-500 text-white text-xs font-medium border-2 border-white cursor-pointer"
                       title={user}
                     >
                       {firstLetter}
@@ -558,7 +573,7 @@ useEffect(() => {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="hidden lg:flex"
+            className="font-medium text-sm text-gray-900 hidden lg:flex hover:bg-gray-50"
           >
             Created
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -569,9 +584,9 @@ useEffect(() => {
         const date = new Date(row.getValue("createdAt"));
         return (
           <div className="hidden lg:block">
-            <p className="text-sm text-gray-900">{date.toLocaleDateString('en-GB')}</p>
+            <p className="text-sm text-gray-900 font-normal">{date.toLocaleDateString('en-GB')}</p>
             {row.original.firstRespondedOn && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-500 mt-0.5">
                 First response: {new Date(row.original.firstRespondedOn).toLocaleDateString()}
               </p>
             )}
@@ -603,7 +618,7 @@ useEffect(() => {
               
               {openDropdown === lead.id && (
                 <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1 hidden lg:block">
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">
+                  <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
                     Change Status
                   </div>
                   {statusOptions.map((status) => (
@@ -619,7 +634,7 @@ useEffect(() => {
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <div className={`w-2 h-2 rounded-full ${status.color.split(' ')[0]} flex-shrink-0`} />
-                        <span className="truncate">{status.label}</span>
+                        <span className="font-normal truncate">{status.label}</span>
                       </div>
                       {lead.status === status.value && (
                         <Check size={16} className="text-blue-600 flex-shrink-0 ml-2" />
@@ -1244,12 +1259,14 @@ const summaryData: SummaryData = useMemo(() => {
       qualifiedLeads: 0,
       totalValue: 0,
       conversionRate: 0,
-      notinterested: 0
+      notinterested: 0,
+      existingclient: 0
     };
   }
 
   return {
-    totalLeads: leads.length,
+    totalLeads: filteredLeads.length,
+    existingclient: leads.filter(lead => lead.status === 'won').length,
     newLeads: filteredLeads.filter(lead => lead.status === 'new').length,
     contactedLeads: filteredLeads.filter(lead => lead.status === 'Contacted').length,
     followup: filteredLeads.filter(lead => lead.status === 'followup').length,
@@ -1418,7 +1435,7 @@ const summaryData: SummaryData = useMemo(() => {
         <div className="flex items-center justify-between mt-2">
           <div className="flex -space-x-2">
             {JSON.parse(lead._assign || "[]")
-              .filter((user: string) => user !== "gokul.krishna.687@gopocket.in")
+              .filter((user: string) => user !== "Administrator")
               .map((user: string, index: number) => {
                 const firstLetter = user.charAt(0).toUpperCase();
                 return (
@@ -1865,27 +1882,30 @@ const formatName = (name = "") => {
         )}
 
         {/* Summary Cards - Responsive Grid - Hidden on mobile (we show quick stats in header instead) */}
-        <div className="hidden lg:grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+        <div className="hidden lg:grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 mb-6">
           <SummaryCard
             title="Total Leads" value={summaryData.totalLeads} icon={Users} color="blue" shadowColor="blue" trend={{ value: 12.5, isPositive: true }} showTrend={true} className="h-full" />
           
           <SummaryCard
-            title="New Leads" value={summaryData.newLeads} icon={User} color="green" shadowColor="green" trend={{ value: 8.2, isPositive: true }} showTrend={true} className="h-full" />
-          
+            title="Existing Client" value={summaryData.existingclient} icon={UserCheck} color="blue" shadowColor="blue" trend={{ value: 8.2, isPositive: true }} showTrend={true} className="h-full" />
+
           <SummaryCard
-            title="Contacted Leads" value={summaryData.contactedLeads} icon={BookText} color="orange" shadowColor="orange" trend={{ value: 22.1, isPositive: true }} 
+            title="New Leads" value={summaryData.newLeads} icon={User} color="blue" shadowColor="blue" trend={{ value: 8.2, isPositive: true }} showTrend={true} className="h-full" />
+
+          <SummaryCard
+            title="Contacted Leads" value={summaryData.contactedLeads} icon={BookText} color="blue" shadowColor="blue" trend={{ value: 22.1, isPositive: true }} 
             showTrend={true} className="h-full" />
 
           <SummaryCard
-            title="Not Interested" value={summaryData.notinterested} icon={PhoneMissed} color="red" shadowColor="red" trend={{ value: 8.1, isPositive: false }} 
+            title="Not Interested" value={summaryData.notinterested} icon={PhoneMissed} color="blue" shadowColor="blue" trend={{ value: 8.1, isPositive: false }} 
             showTrend={true} className="h-full" />
 
           <SummaryCard
-            title="Followup" value={summaryData.followup} icon={CalendarCheck} color="yellow" shadowColor="yellow" trend={{ value: 22.1, isPositive: true }} 
+            title="Followup" value={summaryData.followup} icon={CalendarCheck} color="blue" shadowColor="blue" trend={{ value: 22.1, isPositive: true }} 
             showTrend={true} className="h-full" />
           
           <SummaryCard
-            title="Qualified Leads" value={summaryData.qualifiedLeads} icon={CheckSquare} color="purple" shadowColor="purple" trend={{ value: 15.3, isPositive: true }} showTrend={true} className="h-full" />
+            title="Qualified Leads" value={summaryData.qualifiedLeads} icon={CheckSquare} color="blue" shadowColor="blue" trend={{ value: 15.3, isPositive: true }} showTrend={true} className="h-full" />
         </div>
         
         {/* Bulk Actions Bar */}

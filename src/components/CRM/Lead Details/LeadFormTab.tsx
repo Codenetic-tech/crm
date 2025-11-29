@@ -21,7 +21,9 @@ import {
   MessageSquare,
   BarChart3,
   Briefcase,
-  Smartphone
+  Smartphone,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { type Lead } from '@/utils/crm';
 import { updateCachedLeadDetails } from '@/utils/crmCache';
@@ -123,6 +125,10 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedLead, setEditedLead] = useState<Partial<Lead>>({});
   const [updating, setUpdating] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({
+    trading: true,
+    additional: false
+  });
 
   // Function to update lead
   const updateLead = async () => {
@@ -130,7 +136,6 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({
     
     setUpdating(true);
     try {
-      // Create a clean payload without any existing source field
       const { source: _, ...cleanEditedLead } = editedLead;
       
       const response = await fetch('https://n8n.gopocket.in/webhook/client', {
@@ -151,12 +156,10 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({
         throw new Error(`Failed to update lead: ${response.status}`);
       }
 
-      // Update local state and cache
       const updatedLead = { ...lead, ...cleanEditedLead };
       onLeadUpdate(updatedLead);
       updateCachedLeadDetails(leadId, updatedLead);
       
-      // Exit edit mode
       setIsEditing(false);
       setEditedLead({});
       
@@ -169,10 +172,8 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({
 
   const handleEditToggle = () => {
     if (isEditing) {
-      // Cancel editing
       setEditedLead({});
     } else {
-      // Start editing - initialize with current lead data
       setEditedLead(lead || {});
     }
     setIsEditing(!isEditing);
@@ -189,597 +190,361 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({
     updateLead();
   };
 
-  // Helper function to get display value
   const getDisplayValue = (value: any, fallback: string = 'Not specified') => {
     return value || fallback;
   };
 
-  // Format currency for revenue targeting
   const formatRevenue = (revenue: string) => {
     if (!revenue) return 'Not specified';
     return `₹${revenue}`;
   };
 
+  const toggleSection = (section: 'trading' | 'additional') => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Compact Field Component
+  const CompactField = ({ 
+    icon: Icon, 
+    label, 
+    value, 
+    editValue, 
+    onChange, 
+    type = 'text',
+    placeholder,
+    options,
+    span = 1
+  }: any) => (
+    <div className={`space-y-1 ${span === 2 ? 'md:col-span-2' : ''}`}>
+      <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+        {Icon && <Icon className="w-3 h-3" />}
+        {label}
+      </Label>
+      {isEditing ? (
+        options ? (
+          <Select value={editValue || value || ''} onValueChange={onChange}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((opt: any) => (
+                <SelectItem key={opt.value || opt} value={opt.value || opt}>
+                  {opt.label || opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : type === 'textarea' ? (
+          <Textarea
+            value={editValue || value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            rows={3}
+            placeholder={placeholder}
+            className="resize-none"
+          />
+        ) : (
+          <Input
+            type={type}
+            value={editValue || value || ''}
+            onChange={(e) => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
+            placeholder={placeholder}
+            className="h-9"
+          />
+        )
+      ) : (
+        <div className="px-3 py-1.5 rounded-md bg-muted/50 text-sm min-h-[36px] flex items-center">
+          {value || 'Not specified'}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      {/* Main Form Card */}
-      <Card>
-        <CardHeader className="bg-muted/50">
+    <div className="space-y-4">
+      {/* Header with Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-sm">
+            <User className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">{lead.name}</h2>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-0.5">
+              <Mail className="w-3 h-3" />
+              {lead.email}
+              <span className="mx-1">•</span>
+              <Phone className="w-3 h-3" />
+              {lead.phone}
+              <Badge variant="outline" className="px-3 py-1">
+                {lead.industry}
+              </Badge>
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <Button 
+                onClick={handleUpdateLead}
+                disabled={updating}
+                size="sm"
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {updating ? (
+                  <>
+                    <RefreshCw className="animate-spin h-4 w-4 mr-1.5" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} className="mr-1.5" />
+                    Save
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={handleEditToggle}
+              >
+                <X size={14} className="mr-1.5" />
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button 
+              onClick={handleEditToggle}
+              size="sm"
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Edit3 size={14} className="mr-1.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left Column - Personal & Contact */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3 space-y-0">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <User className="w-4 h-4 text-purple-600" />
+              Personal Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <CompactField
+                icon={Globe}
+                label="Language"
+                value={lead.language}
+                editValue={editedLead.language}
+                onChange={(val: string) => handleFieldChange('language', val)}
+                options={indianLanguages}
+                placeholder="Select language"
+              />
+              <CompactField
+                icon={Tag}
+                label="Status"
+                value={lead.status}
+                editValue={editedLead.status}
+                onChange={(val: string) => handleFieldChange('status', val)}
+                options={statusOptions}
+              />
+              <CompactField
+                icon={Briefcase}
+                label="Profession"
+                value={(lead as any).whats_your_profession}
+                editValue={(editedLead as any).whats_your_profession}
+                onChange={(val: string) => handleFieldChange('whats_your_profession' as any, val)}
+                options={professionOptions}
+                placeholder="Select profession"
+              />
+              <CompactField
+                label="Gender"
+                value={(lead as any).gender}
+                editValue={(editedLead as any).gender}
+                onChange={(val: string) => handleFieldChange('gender' as any, val)}
+                options={[
+                  { value: 'Male', label: 'Male' },
+                  { value: 'Female', label: 'Female' },
+                  { value: 'Other', label: 'Other' }
+                ]}
+                placeholder="Select gender"
+              />
+            </div>
+
+            <Separator className="my-3" />
+
+            <div className="grid grid-cols-2 gap-3">
+              <CompactField
+                icon={MapPin}
+                label="City"
+                value={lead.city}
+                editValue={editedLead.city}
+                onChange={(val: string) => handleFieldChange('city', val)}
+                placeholder="Enter city"
+              />
+              <CompactField
+                icon={MapPin}
+                label="State"
+                value={lead.state}
+                editValue={editedLead.state}
+                onChange={(val: string) => handleFieldChange('state', val)}
+                placeholder="Enter state"
+              />
+              <CompactField
+                icon={BadgeInfo}
+                label="UCC Number"
+                value={lead.ucc}
+                editValue={editedLead.ucc}
+                onChange={(val: string) => handleFieldChange('ucc', val)}
+                placeholder="Enter UCC"
+              />
+              <CompactField
+                icon={FileText}
+                label="PAN Number"
+                value={lead.panNumber}
+                editValue={editedLead.panNumber}
+                onChange={(val: string) => handleFieldChange('panNumber', val)}
+                placeholder="Enter PAN"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Right Column - Source & Business */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3 space-y-0">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Building className="w-4 h-4 text-purple-600" />
+              Source & Business
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <CompactField
+                label="Form ID"
+                value={(lead as any).form_id}
+                editValue={(editedLead as any).form_id}
+                onChange={(val: string) => handleFieldChange('form_id' as any, val)}
+              />
+              <CompactField
+                icon={Target}
+                label="Campaign"
+                value={lead.campaign}
+                editValue={editedLead.campaign}
+                onChange={(val: string) => handleFieldChange('campaign', val)}
+                placeholder="Enter campaign"
+              />
+              <CompactField
+                icon={Building}
+                label="Branch Code"
+                value={lead.branchCode}
+                editValue={editedLead.branchCode}
+                onChange={(val: string) => handleFieldChange('branchCode', val)}
+                placeholder="Enter branch code"
+              />
+              <CompactField
+                icon={Users}
+                label="Referred By"
+                value={lead.referredBy}
+                editValue={editedLead.referredBy}
+                onChange={(val: string) => handleFieldChange('referredBy', val)}
+                placeholder="Referrer name"
+              />
+            </div>
+
+            <Separator className="my-3" />
+
+            <div className="grid grid-cols-2 gap-3">
+              <CompactField
+                icon={BarChart3}
+                label="Trading Experience"
+                value={(lead as any).what_is_your_experience_level_in_trading}
+                editValue={(editedLead as any).what_is_your_experience_level_in_trading}
+                onChange={(val: string) => handleFieldChange('what_is_your_experience_level_in_trading' as any, val)}
+                options={experienceOptions}
+                placeholder="Select experience"
+              />
+              <CompactField
+                icon={Smartphone}
+                label="Preferred Medium"
+                value={(lead as any).what_is_your_preferred_medium_to_get_services_details}
+                editValue={(editedLead as any).what_is_your_preferred_medium_to_get_services_details}
+                onChange={(val: string) => handleFieldChange('what_is_your_preferred_medium_to_get_services_details' as any, val)}
+                options={mediumOptions}
+                placeholder="Select medium"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Trading Details - Collapsible */}
+      <Card className="shadow-sm">
+        <CardHeader 
+          className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => toggleSection('trading')}
+        >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <User className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Lead Information</CardTitle>
-                <CardDescription>Manage lead details and preferences</CardDescription>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {isEditing ? (
-                <>
-                  <Button 
-                    onClick={handleUpdateLead}
-                    disabled={updating}
-                    className="flex bg-purple-600 hover:bg-purple-700 items-center gap-2"
-                  >
-                    {updating ? (
-                      <>
-                        <RefreshCw className="animate-spin h-4 w-4" />
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        <Save size={16} />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={handleEditToggle}
-                    className="flex items-center gap-2"
-                  >
-                    <X size={16} />
-                    Cancel
-                  </Button>
-                </>
-              ) : (
-                <Button 
-                  onClick={handleEditToggle}
-                  className="flex bg-purple-600 hover:bg-purple-700 items-center gap-2"
-                >
-                  <Edit3 size={16} />
-                  Edit Details
-                </Button>
-              )}
-            </div>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-purple-600" />
+              Trading & Revenue Details
+            </CardTitle>
+            {expandedSections.trading ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            )}
           </div>
         </CardHeader>
-
-        <CardContent className="p-6 space-y-6">
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column */}
-            <div className="space-y-6">
-              {/* Personal Information Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <User className="w-4 h-4 text-primary" />
-                    Personal Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    {isEditing ? (
-                      <Input
-                        id="name"
-                        value={editedLead.name || lead.name || ''}
-                        onChange={(e) => handleFieldChange('name', e.target.value)}
-                        placeholder="Enter full name"
-                      />
-                    ) : (
-                      <div className="p-3 border rounded-md bg-muted/50">
-                        {lead.name}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      {isEditing ? (
-                        <Input
-                          id="email"
-                          type="email"
-                          value={editedLead.email || lead.email || ''}
-                          onChange={(e) => handleFieldChange('email', e.target.value)}
-                          placeholder="Enter email"
-                        />
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-muted-foreground" />
-                          {lead.email}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Mobile Number</Label>
-                      {isEditing ? (
-                        <Input
-                          id="phone"
-                          type="tel"
-                          value={editedLead.phone || lead.phone || ''}
-                          onChange={(e) => handleFieldChange('phone', e.target.value)}
-                          placeholder="Enter mobile number"
-                        />
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-muted-foreground" />
-                          {lead.phone}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="language">Language</Label>
-                      {isEditing ? (
-                        <Select
-                          value={editedLead.language || lead.language || ''}
-                          onValueChange={(value) => handleFieldChange('language', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Language" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {indianLanguages.map(language => (
-                              <SelectItem key={language} value={language}>{language}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-muted-foreground" />
-                          {getDisplayValue(lead.language)}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="status">Status</Label>
-                      {isEditing ? (
-                        <Select
-                          value={editedLead.status || lead.status || 'new'}
-                          onValueChange={(value) => handleFieldChange('status', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {statusOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50">
-                          <Badge variant="secondary" className={getStatusColor(lead.status)}>
-                            {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                          </Badge>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Additional Personal Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="profession">Profession</Label>
-                      {isEditing ? (
-                        <Select
-                          value={(editedLead as any).whats_your_profession || (lead as any).whats_your_profession || ''}
-                          onValueChange={(value) => handleFieldChange('whats_your_profession' as any, value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Profession" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {professionOptions.map(profession => (
-                              <SelectItem key={profession} value={profession}>{profession}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                          <Briefcase className="w-4 h-4 text-muted-foreground" />
-                          {getDisplayValue((lead as any).whats_your_profession)}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="gender">Gender</Label>
-                      {isEditing ? (
-                        <Select
-                          value={(editedLead as any).gender || (lead as any).gender || ''}
-                          onValueChange={(value) => handleFieldChange('gender' as any, value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Gender" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Male">Male</SelectItem>
-                            <SelectItem value="Female">Female</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50">
-                          {getDisplayValue((lead as any).gender)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Location & Documents Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-primary" />
-                    Location & Documents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      {isEditing ? (
-                        <Input
-                          id="city"
-                          value={editedLead.city || lead.city || ''}
-                          onChange={(e) => handleFieldChange('city', e.target.value)}
-                          placeholder="Enter city"
-                        />
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50">
-                          {getDisplayValue(lead.city)}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="state">State</Label>
-                      {isEditing ? (
-                        <Input
-                          id="state"
-                          value={editedLead.state || lead.state || ''}
-                          onChange={(e) => handleFieldChange('state', e.target.value)}
-                          placeholder="Enter state"
-                        />
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50">
-                          {getDisplayValue(lead.state)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ucc">UCC Number</Label>
-                      {isEditing ? (
-                        <Input
-                          id="ucc"
-                          value={editedLead.ucc || lead.ucc || ''}
-                          onChange={(e) => handleFieldChange('ucc', e.target.value)}
-                          placeholder="Enter UCC number"
-                        />
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                          <BadgeInfo className="w-4 h-4 text-muted-foreground" />
-                          {getDisplayValue(lead.ucc, 'Not available')}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="panNumber">PAN Number</Label>
-                      {isEditing ? (
-                        <Input
-                          id="panNumber"
-                          value={editedLead.panNumber || lead.panNumber || ''}
-                          onChange={(e) => handleFieldChange('panNumber', e.target.value)}
-                          placeholder="Enter PAN number"
-                        />
-                      ) : (
-                        <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-muted-foreground" />
-                          {getDisplayValue(lead.panNumber, 'Not available')}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        {expandedSections.trading && (
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <CompactField
+                label="Demat Accounts/Month"
+                value={(lead as any).how_many_demat_account_can_you_open_in_a_month?.replace(/_/g, ' ').replace('to', ' to ')}
+                editValue={(editedLead as any).how_many_demat_account_can_you_open_in_a_month}
+                onChange={(val: string) => handleFieldChange('how_many_demat_account_can_you_open_in_a_month' as any, val)}
+                options={dematAccountOptions.map(opt => ({
+                  value: opt,
+                  label: opt.replace(/_/g, ' ').replace('to', ' to ')
+                }))}
+              />
+              <CompactField
+                label="Monthly Revenue Target"
+                value={formatRevenue((lead as any).how_much_revenue_are_you_targeting_in_a_month)}
+                editValue={(editedLead as any).how_much_revenue_are_you_targeting_in_a_month}
+                onChange={(val: string) => handleFieldChange('how_much_revenue_are_you_targeting_in_a_month' as any, val)}
+                placeholder="Enter revenue target"
+              />
+              <CompactField
+                label="No. of Employees"
+                value={lead.noOfEmployees}
+                editValue={editedLead.noOfEmployees}
+                onChange={(val: string) => handleFieldChange('noOfEmployees', val)}
+                type="number"
+              />
+              <CompactField
+                label="Trade Done"
+                value={lead.tradeDone}
+                editValue={editedLead.tradeDone}
+                onChange={(val: string) => handleFieldChange('tradeDone', val)}
+              />
             </div>
 
-            {/* Right Column */}
-            <div className="space-y-6">
-              {/* Company & Source Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Building className="w-4 h-4 text-primary" />
-                    Source Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Form ID</Label>
-                  <div className="p-3 border rounded-md bg-muted/50 font-mono text-sm">
-                    {getDisplayValue((lead as any).form_id)}
-                  </div>
-                </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="industry">Industry/Lead Source</Label>
-                    {isEditing ? (
-                      <Input
-                        id="industry"
-                        value={editedLead.industry || lead.industry || ''}
-                        onChange={(e) => handleFieldChange('industry', e.target.value)}
-                        placeholder="Enter industry"
-                      />
-                    ) : (
-                      <div className="p-3 border rounded-md bg-muted/50">
-                        {lead.industry}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="value">Lead Value</Label>
-                    {isEditing ? (
-                      <Input
-                        id="value"
-                        type="number"
-                        value={editedLead.value || lead.value || 0}
-                        onChange={(e) => handleFieldChange('value', Number(e.target.value))}
-                        placeholder="Enter lead value"
-                      />
-                    ) : (
-                      <div className="p-3 border rounded-md bg-muted/50 font-bold text-lg text-green-600">
-                        ₹{(lead.value || 0).toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="branchCode">Branch Code</Label>
-                    {isEditing ? (
-                      <Input
-                        id="branchCode"
-                        value={editedLead.branchCode || lead.branchCode || ''}
-                        onChange={(e) => handleFieldChange('branchCode', e.target.value)}
-                        placeholder="Enter branch code"
-                      />
-                    ) : (
-                      <div className="p-3 border rounded-md bg-muted/50">
-                        {getDisplayValue(lead.branchCode, 'Not available')}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="campaign">Campaign</Label>
-                    {isEditing ? (
-                      <Input
-                        id="campaign"
-                        value={editedLead.campaign || lead.campaign || ''}
-                        onChange={(e) => handleFieldChange('campaign', e.target.value)}
-                        placeholder="Enter campaign"
-                      />
-                    ) : (
-                      <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                        <Target className="w-4 h-4 text-muted-foreground" />
-                        {getDisplayValue(lead.campaign)}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Trading & Business Details */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    Trading & Business Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="experience">Trading Experience</Label>
-                    {isEditing ? (
-                      <Select
-                        value={(editedLead as any).what_is_your_experience_level_in_trading || (lead as any).what_is_your_experience_level_in_trading || ''}
-                        onValueChange={(value) => handleFieldChange('what_is_your_experience_level_in_trading' as any, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Experience Level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {experienceOptions.map(level => (
-                            <SelectItem key={level} value={level}>{level}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="p-3 border rounded-md bg-muted/50">
-                        {getDisplayValue((lead as any).what_is_your_experience_level_in_trading)}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="dematAccounts">Demat Accounts/Month</Label>
-                    {isEditing ? (
-                      <Select
-                        value={(editedLead as any).how_many_demat_account_can_you_open_in_a_month || (lead as any).how_many_demat_account_can_you_open_in_a_month || ''}
-                        onValueChange={(value) => handleFieldChange('how_many_demat_account_can_you_open_in_a_month' as any, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Range" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {dematAccountOptions.map(option => (
-                            <SelectItem key={option} value={option}>
-                              {option.replace(/_/g, ' ').replace('to', ' to ')}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4 text-muted-foreground" />
-                        {getDisplayValue((lead as any).how_many_demat_account_can_you_open_in_a_month?.replace(/_/g, ' ').replace('to', ' to '))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="revenueTarget">Monthly Revenue Target</Label>
-                    {isEditing ? (
-                      <Input
-                        id="revenueTarget"
-                        value={(editedLead as any).how_much_revenue_are_you_targeting_in_a_month || (lead as any).how_much_revenue_are_you_targeting_in_a_month || ''}
-                        onChange={(e) => handleFieldChange('how_much_revenue_are_you_targeting_in_a_month' as any, e.target.value)}
-                        placeholder="Enter revenue target"
-                      />
-                    ) : (
-                      <div className="p-3 border rounded-md bg-muted/50 font-semibold text-green-600">
-                        {formatRevenue((lead as any).how_much_revenue_are_you_targeting_in_a_month)}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="preferredMedium">Preferred Communication Medium</Label>
-                    {isEditing ? (
-                      <Select
-                        value={(editedLead as any).what_is_your_preferred_medium_to_get_services_details || (lead as any).what_is_your_preferred_medium_to_get_services_details || ''}
-                        onValueChange={(value) => handleFieldChange('what_is_your_preferred_medium_to_get_services_details' as any, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Medium" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {mediumOptions.map(medium => (
-                            <SelectItem key={medium} value={medium}>{medium}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                        <Smartphone className="w-4 h-4 text-muted-foreground" />
-                        {getDisplayValue((lead as any).what_is_your_preferred_medium_to_get_services_details)}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Additional Details Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
-                Additional Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="referredBy">Referred By</Label>
-                  {isEditing ? (
-                    <Input
-                      id="referredBy"
-                      value={editedLead.referredBy || lead.referredBy || ''}
-                      onChange={(e) => handleFieldChange('referredBy', e.target.value)}
-                      placeholder="Enter referrer name"
-                    />
-                  ) : (
-                    <div className="p-3 border rounded-md bg-muted/50">
-                      {getDisplayValue(lead.referredBy, 'Not referred')}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="noOfEmployees">No. of Employees</Label>
-                  {isEditing ? (
-                    <Input
-                      id="noOfEmployees"
-                      type="number"
-                      value={editedLead.noOfEmployees || lead.noOfEmployees || ''}
-                      onChange={(e) => handleFieldChange('noOfEmployees', e.target.value)}
-                      placeholder="Enter number of employees"
-                    />
-                  ) : (
-                    <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      {getDisplayValue(lead.noOfEmployees, 'Not specified')}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tradeDone">Trade Done</Label>
-                  {isEditing ? (
-                    <Input
-                      id="tradeDone"
-                      value={editedLead.tradeDone || lead.tradeDone || ''}
-                      onChange={(e) => handleFieldChange('tradeDone', e.target.value)}
-                      placeholder="Enter trade details"
-                    />
-                  ) : (
-                    <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                      {getDisplayValue(lead.tradeDone, 'Not specified')}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="otherBrokers">Other Brokers</Label>
-                  {isEditing ? (
-                    <Input
-                      id="otherBrokers"
-                      value={editedLead.other_brokers || lead.other_brokers || ''}
-                      onChange={(e) => handleFieldChange('other_brokers', e.target.value)}
-                      placeholder="Enter other brokers"
-                    />
-                  ) : (
-                    <div className="p-3 border rounded-md bg-muted/50">
-                      {getDisplayValue(lead.other_brokers, 'None')}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Trading Segments */}
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {/* Trading Segments - Compact */}
+            <div className="mt-4 pt-3 border-t">
+              <Label className="text-xs font-medium text-muted-foreground mb-2 block">Trading Segments</Label>
+              <div className="flex flex-wrap gap-2">
                 {[
                   { key: 'nseCm', label: 'NSE CM' },
                   { key: 'nseCd', label: 'NSE CD' },
@@ -788,43 +553,61 @@ const LeadFormTab: React.FC<LeadFormTabProps> = ({
                   { key: 'nseFo', label: 'NSE FO' },
                   { key: 'bseCm', label: 'BSE CM' }
                 ].map((segment) => (
-                  <div key={segment.key} className="space-y-2">
-                    <Label>{segment.label}</Label>
-                    <div className="p-2 border rounded-md bg-muted/50 text-center">
-                      <Badge variant={lead[segment.key as keyof Lead] ? "default" : "outline"}>
-                        {lead[segment.key as keyof Lead] ? 'Yes' : 'No'}
-                      </Badge>
-                    </div>
-                  </div>
+                  <Badge 
+                    key={segment.key}
+                    variant={lead[segment.key as keyof Lead] ? "default" : "outline"}
+                    className="text-xs"
+                  >
+                    {segment.label}
+                  </Badge>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
-          {/* Notes Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary" />
-                Notes & Issues
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isEditing ? (
-                <Textarea
-                  value={editedLead.notes || lead.notes || ''}
-                  onChange={(e) => handleFieldChange('notes', e.target.value)}
-                  rows={4}
-                  placeholder="Add notes or issues about this lead..."
-                />
-              ) : (
-                <div className="p-3 border rounded-md bg-muted/50 min-h-24 whitespace-pre-wrap">
-                  {getDisplayValue(lead.notes, 'No notes available')}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </CardContent>
+      {/* Additional Details - Collapsible */}
+      <Card className="shadow-sm">
+        <CardHeader 
+          className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => toggleSection('additional')}
+        >
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <FileText className="w-4 h-4 text-purple-600" />
+              Additional Information
+            </CardTitle>
+            {expandedSections.additional ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            )}
+          </div>
+        </CardHeader>
+        {expandedSections.additional && (
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3">
+              <CompactField
+                label="Other Brokers"
+                value={lead.other_brokers}
+                editValue={editedLead.other_brokers}
+                onChange={(val: string) => handleFieldChange('other_brokers', val)}
+                placeholder="Enter other brokers"
+              />
+              <CompactField
+                icon={MessageSquare}
+                label="Notes & Issues"
+                value={lead.notes}
+                editValue={editedLead.notes}
+                onChange={(val: string) => handleFieldChange('notes', val)}
+                type="textarea"
+                placeholder="Add notes or issues about this lead..."
+                span={2}
+              />
+            </div>
+          </CardContent>
+        )}
       </Card>
     </div>
   );
